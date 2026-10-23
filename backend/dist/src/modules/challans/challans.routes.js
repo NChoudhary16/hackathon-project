@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const challans_controller_1 = require("./challans.controller");
+const validate_middleware_1 = require("../../middleware/validate.middleware");
+const challans_schema_1 = require("./challans.schema");
+const router = (0, express_1.Router)();
+router.post('/', (0, validate_middleware_1.validate)(challans_schema_1.createChallanSchema), challans_controller_1.ChallansController.create);
+router.get('/', (0, validate_middleware_1.validate)(challans_schema_1.listChallansQuerySchema), challans_controller_1.ChallansController.list);
+router.get('/:id', challans_controller_1.ChallansController.getById);
+exports.default = router;

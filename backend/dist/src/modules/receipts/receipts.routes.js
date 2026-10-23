@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const receipts_controller_1 = require("./receipts.controller");
+const validate_middleware_1 = require("../../middleware/validate.middleware");
+const receipts_schema_1 = require("./receipts.schema");
+const router = (0, express_1.Router)();
+router.post('/', (0, validate_middleware_1.validate)(receipts_schema_1.createReceiptSchema), receipts_controller_1.ReceiptsController.createReceipt);
+router.get('/', (0, validate_middleware_1.validate)(receipts_schema_1.getReceiptsQuerySchema), receipts_controller_1.ReceiptsController.listReceipts);
+router.get('/:id', receipts_controller_1.ReceiptsController.getReceiptById);
+exports.default = router;

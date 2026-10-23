@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const inventory_controller_1 = require("./inventory.controller");
+const validate_middleware_1 = require("../../middleware/validate.middleware");
+const inventory_schema_1 = require("./inventory.schema");
+const router = (0, express_1.Router)();
+router.get('/summary', (0, validate_middleware_1.validate)(inventory_schema_1.inventorySummaryQuerySchema), inventory_controller_1.InventoryController.getSummary);
+router.get('/', (0, validate_middleware_1.validate)(inventory_schema_1.listInventoryQuerySchema), inventory_controller_1.InventoryController.list);
+router.get('/:batchId', inventory_controller_1.InventoryController.getById);
+exports.default = router;

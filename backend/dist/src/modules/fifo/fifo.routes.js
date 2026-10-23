@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const fifo_controller_1 = require("./fifo.controller");
+const validate_middleware_1 = require("../../middleware/validate.middleware");
+const fifo_schema_1 = require("./fifo.schema");
+const router = (0, express_1.Router)();
+router.post('/calculate', (0, validate_middleware_1.validate)(fifo_schema_1.calculateFifoSchema), fifo_controller_1.FifoController.calculate);
+router.get('/eligible', fifo_controller_1.FifoController.getEligible);
+exports.default = router;
