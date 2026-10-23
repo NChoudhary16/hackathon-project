@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FIFO Grain Supply Chain – Full Workflow & Movement Engine</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+      overflow-x: hidden;
+      position: relative;
+      color: #0f172a;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(203,213,225,0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(203,213,225,0.4) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 10;
+      max-width: 860px;
+    }
+    .badge-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      margin-bottom: 10px;
+    }
+    .badge-top .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+      animation: blink 1.2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+    h1 span {
+      color: #2563eb;
+    }
+    header p {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    /* Tab switcher */
+    .view-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 10;
+    }
+    .tabs {
+      display: flex;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: #475569;
+      padding: 7px 16px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: #0f172a; }
+    .tab-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Container Box */
+    .canvas-container {
+      width: min(100vw - 32px, 1160px);
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 10;
+      overflow-x: auto;
+    }
+
+    svg {
+      width: 100%;
+      min-width: 980px;
+      height: auto;
+      display: block;
+    }
+
+    .node-g {
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s;
+    }
+    .node-g:hover {
+      filter: drop-shadow(0 4px 8px rgba(37,99,235,0.15));
+    }
+
+    /* Step info card */
+    .step-card {
+      width: min(100vw - 32px, 1160px);
+      margin-top: 16px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px 20px;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.8rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step-badge {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.72rem;
+    }
+    .step-title {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+    .step-desc {
+      color: #64748b;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="badge-top">
+    <span class="dot"></span>
+    INTEGRATED PUBLIC DISTRIBUTION SYSTEM • FIFO ALLOCATION ENGINE
+  </div>
+  <h1>End-to-End FIFO Architecture: <span>Grain Lifecycle & Movement</span></h1>
+  <p>Interactive animated workflow demonstrating stock inward logging, deterministic batch age evaluation, multi-stack split, and fair price shop distribution.</p>
+</header>
+
+<div class="view-controls">
+  <div class="tabs">
+    <button class="tab-btn active" id="btn-flow" onclick="switchView('flow')">1. Operational FIFO Flowchart</button>
+    <button class="tab-btn" id="btn-net" onclick="switchView('net')">2. Physical Godown → iPDS → FPS Network</button>
+  </div>
+</div>
+
+<div class="canvas-container">
+  <!-- VIEW 1: FLOWCHART (WHITE BACKGROUND) -->
+  <div id="view-flow">
+    <svg viewBox="0 0 1140 560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="lightShadow" x="-10%" y="-10%" width="125%" height="125%">
+          <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.06" />
+        </filter>
+      </defs>
+
+      <!-- CONNECTING PATHS -->
+      <path id="pf-start-receive" d="M 570 46 L 570 65 L 210 65 L 210 88" fill="none" stroke="#10b981" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-50" dur="1.5s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#059669">
+        <animateMotion dur="2s" repeatCount="indefinite"><mpath href="#pf-start-receive" /></animateMotion>
+      </circle>
+
+      <path id="pf-receive-digital" d="M 310 124 L 350 124" fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#2563eb">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-receive-digital" /></animateMotion>
+      </circle>
+
+      <path id="pf-digital-stored" d="M 590 124 L 640 124" fill="none" stroke="#10b981" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#059669">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-digital-stored" /></animateMotion>
+      </circle>
+
+      <path id="pf-stored-challan" d="M 850 124 L 920 124 C 950 124, 950 175, 920 175 L 140 175 C 110 175, 110 215, 140 215 L 150 240" fill="none" stroke="#d97706" stroke-width="2.2" stroke-dasharray="8 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-150" dur="3s" repeatCount="indefinite" />
+      </path>
+      <circle r="5" fill="#b45309">
+        <animateMotion dur="3.5s" repeatCount="indefinite"><mpath href="#pf-stored-challan" /></animateMotion>
+      </circle>
+
+      <path id="pf-challan-oldest" d="M 235 276 L 275 276" fill="none" stroke="#db2777" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#be185d">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-challan-oldest" /></animateMotion>
+      </circle>
+
+      <path id="pf-oldest-check" d="M 470 276 L 505 276" fill="none" stroke="#4f46e5" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#4338ca">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-oldest-check" /></animateMotion>
+      </circle>
+
+      <path id="pf-check-diamond" d="M 695 276 L 735 276" fill="none" stroke="#0d9488" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#0f766e">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-check-diamond" /></animateMotion>
+      </circle>
+
+      <path id="pf-diamond-yes" d="M 835 276 L 910 276" fill="none" stroke="#10b981" stroke-width="2.4" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="5" fill="#059669">
+        <animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#pf-diamond-yes" /></animateMotion>
+      </circle>
+
+      <path id="pf-diamond-no" d="M 785 316 L 785 350 L 730 350" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#c2410c">
+        <animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#pf-diamond-no" /></animateMotion>
+      </circle>
+
+      <path id="pf-pull-allocate" d="M 730 370 L 980 370 L 980 312" fill="none" stroke="#ea580c" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-60" dur="1.8s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#c2410c">
+        <animateMotion dur="2s" repeatCount="indefinite"><mpath href="#pf-pull-allocate" /></animateMotion>
+      </circle>
+
+      <path id="pf-allocate-update" d="M 980 312 L 980 410 C 980 425, 960 425, 940 425 L 140 425 C 110 425, 110 455, 140 455 L 150 480" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-dasharray="8 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-150" dur="3s" repeatCount="indefinite" />
+      </path>
+      <circle r="5" fill="#1d4ed8">
+        <animateMotion dur="3.5s" repeatCount="indefinite"><mpath href="#pf-allocate-update" /></animateMotion>
+      </circle>
+
+      <path id="pf-update-trace" d="M 235 480 L 275 480" fill="none" stroke="#7c3aed" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#6d28d9">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-update-trace" /></animateMotion>
+      </circle>
+
+      <path id="pf-trace-alerts" d="M 470 480 L 505 480" fill="none" stroke="#059669" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#047857">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-trace-alerts" /></animateMotion>
+      </circle>
+
+      <path id="pf-alerts-dashboard" d="M 740 480 L 780 480" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#b91c1c">
+        <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf-alerts-dashboard" /></animateMotion>
+      </circle>
+
+      <path id="pf-dashboard-end" d="M 1010 480 L 1050 480" fill="none" stroke="#0284c7" stroke-width="2.2" stroke-dasharray="6 4">
+        <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
+      </path>
+      <circle r="4.5" fill="#0369a1">
+        <animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#pf-dashboard-end" /></animateMotion>
+      </circle>
+
+      <!-- ROW 2 CONTAINER -->
+      <rect x="40" y="190" width="1060" height="215" rx="18" fill="rgba(240,249,255,0.6)" stroke="#93c5fd" stroke-width="1.8" stroke-dasharray="8 6" />
+      <g transform="translate(420, 178)">
+        <rect width="300" height="25" rx="12.5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.4" />
+        <text x="150" y="16.5" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#1e40af" letter-spacing="0.8">
+          Dispatch Process (FIFO Allocation)
+        </text>
+      </g>
+
+      <!-- NODES (CLEAN WHITE CARDS) -->
+      <!-- Start -->
+      <g transform="translate(520, 18)" class="node-g">
+        <rect width="100" height="28" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" />
+        <text x="50" y="18" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#047857">Start</text>
+      </g>
+
+      <!-- Receive Stock -->
+      <g transform="translate(110, 88)" class="node-g" onclick="showStep(0)">
+        <rect width="200" height="72" rx="12" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="14" y="14" width="44" height="44" rx="9" fill="#eff6ff" />
+        <path d="M 24 40 L 48 40 L 48 28 L 38 28 L 32 34 L 24 34 Z M 28 44 A 3 3 0 1 0 28 38 A 3 3 0 1 0 28 44 Z M 44 44 A 3 3 0 1 0 44 38 A 3 3 0 1 0 44 44 Z" fill="#2563eb" />
+        <text x="68" y="32" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#0f172a">Receive Stock</text>
+        <text x="68" y="47" font-family="Inter,sans-serif" font-size="9" fill="#64748b">Stock arrives at warehouse</text>
+      </g>
+
+      <!-- Digital Inward Logging -->
+      <g transform="translate(350, 88)" class="node-g" onclick="showStep(1)">
+        <rect width="240" height="72" rx="12" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="14" y="14" width="44" height="44" rx="9" fill="#ecfdf5" />
+        <path d="M 28 24 L 42 24 L 46 28 L 46 48 L 28 48 Z" fill="none" stroke="#059669" stroke-width="1.8" />
+        <circle cx="44" cy="44" r="6" fill="#10b981" />
+        <path d="M 44 41 L 44 47 M 41 44 L 47 44" stroke="#ffffff" stroke-width="1.5" />
+        <text x="68" y="30" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#0f172a">Digital Inward Logging</text>
+        <text x="68" y="44" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Record commodity, supplier,</text>
+        <text x="68" y="55" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">receipt date & batch qty</text>
+      </g>
+
+      <!-- Stock Stored -->
+      <g transform="translate(640, 88)" class="node-g" onclick="showStep(2)">
+        <rect width="210" height="72" rx="12" fill="#ffffff" stroke="#fde68a" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="14" y="14" width="44" height="44" rx="9" fill="#fef3c7" />
+        <rect x="25" y="32" width="12" height="12" fill="none" stroke="#d97706" stroke-width="1.5" />
+        <rect x="39" y="32" width="12" height="12" fill="none" stroke="#d97706" stroke-width="1.5" />
+        <rect x="32" y="20" width="12" height="12" fill="none" stroke="#d97706" stroke-width="1.5" />
+        <text x="68" y="32" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#0f172a">Stock Stored</text>
+        <text x="68" y="47" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Batch-wise stock added to</text>
+        <text x="68" y="58" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">active godown inventory</text>
+      </g>
+
+      <!-- Create Challan -->
+      <g transform="translate(60, 240)" class="node-g" onclick="showStep(3)">
+        <rect width="175" height="72" rx="12" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#fdf2f8" />
+        <path d="M 24 24 L 40 24 L 44 28 L 44 48 L 24 48 Z M 28 32 L 38 32 M 28 38 L 38 38" fill="none" stroke="#db2777" stroke-width="1.6" />
+        <text x="62" y="31" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">Create Delivery Challan</text>
+        <text x="62" y="46" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Enter FPS and required</text>
+        <text x="62" y="57" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">metric tonnage</text>
+      </g>
+
+      <!-- Identify Oldest Batch -->
+      <g transform="translate(275, 240)" class="node-g" onclick="showStep(4)">
+        <rect width="195" height="72" rx="12" fill="#ffffff" stroke="#c7d2fe" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#eef2ff" />
+        <circle cx="31" cy="34" r="8" fill="none" stroke="#4f46e5" stroke-width="1.8" />
+        <line x1="37" y1="40" x2="45" y2="48" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" />
+        <text x="62" y="30" font-family="Inter,sans-serif" font-size="10.5" font-weight="700" fill="#0f172a">Identify Oldest Batch</text>
+        <text x="62" y="42" font-family="Inter,sans-serif" font-size="9" font-weight="600" fill="#4338ca">(FIFO Enforced)</text>
+        <text x="62" y="55" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Selects oldest active lot</text>
+      </g>
+
+      <!-- Check Batch Quantity -->
+      <g transform="translate(505, 240)" class="node-g" onclick="showStep(5)">
+        <rect width="190" height="72" rx="12" fill="#ffffff" stroke="#99f6e4" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#f0fdfa" />
+        <circle cx="33" cy="36" r="6" fill="none" stroke="#0d9488" stroke-width="2" />
+        <path d="M 33 26 L 33 30 M 33 42 L 33 46 M 23 36 L 27 36 M 39 36 L 43 36" stroke="#0d9488" stroke-width="1.8" stroke-linecap="round" />
+        <text x="62" y="31" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">Check Batch Quantity</text>
+        <text x="62" y="46" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Is oldest batch enough</text>
+        <text x="62" y="57" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">to fulfill full demand?</text>
+      </g>
+
+      <!-- Decision Diamond -->
+      <g transform="translate(735, 236)" class="node-g" filter="url(#lightShadow)">
+        <polygon points="50,0 100,40 50,80 0,40" fill="#fef2f2" stroke="#ef4444" stroke-width="1.8" />
+        <text x="50" y="36" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#b91c1c">Is quantity</text>
+        <text x="50" y="49" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#b91c1c">enough?</text>
+        <text x="108" y="35" font-family="Inter,sans-serif" font-size="10" font-weight="800" fill="#059669">Yes</text>
+        <text x="60" y="94" font-family="Inter,sans-serif" font-size="10" font-weight="800" fill="#c2410c">No</text>
+      </g>
+
+      <!-- Pull Next Oldest -->
+      <g transform="translate(530, 335)" class="node-g" onclick="showStep(6)">
+        <rect width="200" height="60" rx="10" fill="#ffffff" stroke="#fed7aa" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="10" y="10" width="38" height="40" rx="8" fill="#fff7ed" />
+        <rect x="18" y="24" width="10" height="10" fill="none" stroke="#ea580c" stroke-width="1.4" />
+        <rect x="30" y="24" width="10" height="10" fill="none" stroke="#ea580c" stroke-width="1.4" />
+        <text x="56" y="26" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#0f172a">Pull from Next Oldest</text>
+        <text x="56" y="39" font-family="Inter,sans-serif" font-size="8" fill="#64748b">Waterfall allocate remaining</text>
+        <text x="56" y="49" font-family="Inter,sans-serif" font-size="8" fill="#64748b">until quota fulfilled</text>
+      </g>
+
+      <!-- Allocate & Generate Challan -->
+      <g transform="translate(910, 240)" class="node-g" onclick="showStep(7)">
+        <rect width="170" height="72" rx="12" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#eff6ff" />
+        <path d="M 24 24 L 38 24 L 42 28 L 42 48 L 24 48 Z" fill="none" stroke="#2563eb" stroke-width="1.6" />
+        <circle cx="40" cy="44" r="5" fill="#10b981" />
+        <path d="M 38 44 L 40 46 L 43 43" stroke="#ffffff" stroke-width="1.4" fill="none" />
+        <text x="60" y="30" font-family="Inter,sans-serif" font-size="10.5" font-weight="700" fill="#0f172a">Allocate & Generate</text>
+        <text x="60" y="44" font-family="Inter,sans-serif" font-size="9" font-weight="600" fill="#1d4ed8">Delivery Challan</text>
+        <text x="60" y="56" font-family="Inter,sans-serif" font-size="8" fill="#64748b">Locked & QR Signed</text>
+      </g>
+
+      <!-- Update Inventory -->
+      <g transform="translate(60, 444)" class="node-g" onclick="showStep(8)">
+        <rect width="175" height="72" rx="12" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#f5f3ff" />
+        <ellipse cx="33" cy="27" rx="10" ry="3.5" fill="none" stroke="#7c3aed" stroke-width="1.6" />
+        <path d="M 23 27 L 23 45 C 23 48, 43 48, 43 45 L 43 27" fill="none" stroke="#7c3aed" stroke-width="1.6" />
+        <path d="M 23 36 C 23 39, 43 39, 43 36" fill="none" stroke="#7c3aed" stroke-width="1.6" />
+        <text x="60" y="31" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">Update Inventory</text>
+        <text x="60" y="46" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Deduct issued quantities</text>
+        <text x="60" y="57" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">in live database</text>
+      </g>
+
+      <!-- Maintain Traceability -->
+      <g transform="translate(275, 444)" class="node-g" onclick="showStep(9)">
+        <rect width="195" height="72" rx="12" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#ecfdf5" />
+        <circle cx="33" cy="36" r="10" fill="none" stroke="#059669" stroke-width="1.6" />
+        <polyline points="33,30 33,36 38,36" fill="none" stroke="#059669" stroke-width="1.6" stroke-linecap="round" />
+        <text x="62" y="31" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">Maintain Traceability</text>
+        <text x="62" y="46" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">Record which batches were</text>
+        <text x="62" y="57" font-family="Inter,sans-serif" font-size="8.5" fill="#64748b">supplied to each FPS</text>
+      </g>
+
+      <!-- Alerts & Exceptions -->
+      <g transform="translate(505, 444)" class="node-g" onclick="showStep(10)">
+        <rect width="235" height="72" rx="12" fill="#ffffff" stroke="#fecaca" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#fef2f2" />
+        <path d="M 33 24 L 45 44 L 21 44 Z" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-linejoin="round" />
+        <line x1="33" y1="31" x2="33" y2="36" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round" />
+        <circle cx="33" cy="40" r="1" fill="#dc2626" />
+        <text x="62" y="28" font-family="Inter,sans-serif" font-size="10.5" font-weight="700" fill="#991b1b">Alerts & Exceptions</text>
+        <text x="62" y="41" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• Monitor stock aging & flag old</text>
+        <text x="62" y="52" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• Alert on skipping older batch</text>
+        <text x="62" y="63" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• Require reason for exceptions</text>
+      </g>
+
+      <!-- Centralized Dashboard -->
+      <g transform="translate(780, 444)" class="node-g" onclick="showStep(11)">
+        <rect width="230" height="72" rx="12" fill="#ffffff" stroke="#bae6fd" stroke-width="1.4" filter="url(#lightShadow)" />
+        <rect x="12" y="14" width="42" height="44" rx="9" fill="#f0f9ff" />
+        <rect x="23" y="25" width="20" height="15" rx="2" fill="none" stroke="#0284c7" stroke-width="1.6" />
+        <line x1="28" y1="35" x2="28" y2="31" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="33" y1="35" x2="33" y2="28" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="38" y1="35" x2="38" y2="33" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="33" y1="40" x2="33" y2="45" stroke="#0284c7" stroke-width="1.6" />
+        <text x="62" y="28" font-family="Inter,sans-serif" font-size="10.5" font-weight="700" fill="#0369a1">Centralized Dashboard</text>
+        <text x="62" y="41" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• Available inventory & aging</text>
+        <text x="62" y="52" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• Dispatch history & rakes</text>
+        <text x="62" y="63" font-family="Inter,sans-serif" font-size="8" fill="#64748b">• FIFO compliance metrics</text>
+      </g>
+
+      <!-- End -->
+      <g transform="translate(1050, 466)" class="node-g">
+        <rect width="70" height="28" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5" />
+        <text x="35" y="18" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="700" fill="#047857">End</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- VIEW 2: NETWORK (WHITE BACKGROUND) -->
+  <div id="view-net" style="display:none;">
+    <svg viewBox="0 0 1100 540" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="netLineG" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#d97706" /><stop offset="100%" stop-color="#4f46e5" />
+        </linearGradient>
+        <linearGradient id="netLineF" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#4f46e5" /><stop offset="100%" stop-color="#059669" />
+        </linearGradient>
+      </defs>
+
+      <!-- Connectors -->
+      <path id="net-g1" d="M 248 120 C 380 120, 400 270, 520 270" fill="none" stroke="url(#netLineG)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.4s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-g2" d="M 248 210 C 360 210, 410 270, 520 270" fill="none" stroke="url(#netLineG)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.8s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-g3" d="M 248 330 C 360 330, 410 270, 520 270" fill="none" stroke="url(#netLineG)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="3.1s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-g4" d="M 248 420 C 380 420, 400 270, 520 270" fill="none" stroke="url(#netLineG)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.6s" repeatCount="indefinite"/>
+      </path>
+
+      <path id="net-f1" d="M 696 270 C 810 270, 820 120, 930 120" fill="none" stroke="url(#netLineF)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.2s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-f2" d="M 696 270 C 800 270, 820 210, 930 210" fill="none" stroke="url(#netLineF)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.9s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-f3" d="M 696 270 C 800 270, 820 330, 930 330" fill="none" stroke="url(#netLineF)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="2.5s" repeatCount="indefinite"/>
+      </path>
+      <path id="net-f4" d="M 696 270 C 810 270, 820 420, 930 420" fill="none" stroke="url(#netLineF)" stroke-width="2.2" stroke-dasharray="6 5">
+        <animate attributeName="stroke-dashoffset" from="0" to="-220" dur="3.3s" repeatCount="indefinite"/>
+      </path>
+
+      <!-- Particles -->
+      <circle r="5.5" fill="#d97706">
+        <animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#net-g1"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#d97706">
+        <animateMotion dur="2.8s" repeatCount="indefinite" begin="0.4s"><mpath href="#net-g2"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#d97706">
+        <animateMotion dur="3.1s" repeatCount="indefinite" begin="0.6s"><mpath href="#net-g3"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#d97706">
+        <animateMotion dur="2.6s" repeatCount="indefinite" begin="1.0s"><mpath href="#net-g4"/></animateMotion>
+      </circle>
+
+      <circle r="5.5" fill="#059669">
+        <animateMotion dur="2.2s" repeatCount="indefinite" begin="0.3s"><mpath href="#net-f1"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#059669">
+        <animateMotion dur="2.9s" repeatCount="indefinite" begin="0.7s"><mpath href="#net-f2"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#059669">
+        <animateMotion dur="2.5s" repeatCount="indefinite" begin="1.4s"><mpath href="#net-f3"/></animateMotion>
+      </circle>
+      <circle r="5.5" fill="#059669">
+        <animateMotion dur="3.3s" repeatCount="indefinite" begin="0.9s"><mpath href="#net-f4"/></animateMotion>
+      </circle>
+
+      <!-- Godowns -->
+      <g transform="translate(62,84)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#fde68a" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect width="4" height="72" rx="2" fill="#d97706"/>
+        <text x="58" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">GODOWN – 01</text>
+        <text x="58" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">Central Warehouse</text>
+        <rect x="58" y="49" width="95" height="15" rx="7.5" fill="#fef3c7"/>
+        <text x="75" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#b45309" font-weight="700">Stock: 4,200 MT</text>
+      </g>
+      <g transform="translate(62,174)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#fde68a" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect width="4" height="72" rx="2" fill="#d97706"/>
+        <text x="58" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">GODOWN – 02</text>
+        <text x="58" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">North District</text>
+        <rect x="58" y="49" width="95" height="15" rx="7.5" fill="#fef3c7"/>
+        <text x="75" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#b45309" font-weight="700">Stock: 3,750 MT</text>
+      </g>
+      <g transform="translate(62,294)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#fde68a" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect width="4" height="72" rx="2" fill="#d97706"/>
+        <text x="58" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">GODOWN – 03</text>
+        <text x="58" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">South District</text>
+        <rect x="58" y="49" width="95" height="15" rx="7.5" fill="#fef3c7"/>
+        <text x="75" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#b45309" font-weight="700">Stock: 2,900 MT</text>
+      </g>
+      <g transform="translate(62,384)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#fde68a" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect width="4" height="72" rx="2" fill="#d97706"/>
+        <text x="58" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">GODOWN – 04</text>
+        <text x="58" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">East Depot</text>
+        <rect x="58" y="49" width="95" height="15" rx="7.5" fill="#fef3c7"/>
+        <text x="75" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#b45309" font-weight="700">Stock: 5,100 MT</text>
+      </g>
+
+      <!-- Center iPDS -->
+      <g transform="translate(520,270)">
+        <circle cx="0" cy="0" r="92" fill="none" stroke="#e0e7ff" stroke-width="1.8">
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="0" cy="0" r="76" fill="none" stroke="#c7d2fe" stroke-width="1.4" stroke-dasharray="8 6">
+          <animateTransform attributeName="transform" type="rotate" from="0" to="-360" dur="12s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="0" cy="0" r="54" fill="#ffffff" stroke="#4f46e5" stroke-width="2.2" filter="url(#lightShadow)"/>
+        <circle cx="0" cy="0" r="54" fill="none" stroke="#6366f1" stroke-width="3" stroke-dasharray="34 100" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="4s" repeatCount="indefinite"/>
+        </circle>
+        <text x="0" y="-8" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="800" fill="#312e81" letter-spacing="1.5">iPDS HUB</text>
+        <text x="0" y="8" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" fill="#64748b">FIFO Allocation</text>
+        <rect x="-28" y="16" width="56" height="16" rx="8" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+        <text x="0" y="27" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#4338ca">ACTIVE</text>
+      </g>
+
+      <!-- FPS -->
+      <g transform="translate(868,84)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect x="166" width="4" height="72" rx="2" fill="#059669"/>
+        <text x="14" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">FPS – A01</text>
+        <text x="14" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">Ward 12, Zone A</text>
+        <rect x="14" y="49" width="105" height="15" rx="7.5" fill="#ecfdf5"/>
+        <text x="24" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#047857" font-weight="700">850 beneficiaries</text>
+      </g>
+      <g transform="translate(868,174)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect x="166" width="4" height="72" rx="2" fill="#059669"/>
+        <text x="14" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">FPS – A02</text>
+        <text x="14" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">Ward 08, Zone B</text>
+        <rect x="14" y="49" width="105" height="15" rx="7.5" fill="#ecfdf5"/>
+        <text x="24" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#047857" font-weight="700">620 beneficiaries</text>
+      </g>
+      <g transform="translate(868,294)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect x="166" width="4" height="72" rx="2" fill="#059669"/>
+        <text x="14" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">FPS – B01</text>
+        <text x="14" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">Ward 03, Zone C</text>
+        <rect x="14" y="49" width="105" height="15" rx="7.5" fill="#ecfdf5"/>
+        <text x="24" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#047857" font-weight="700">1,100 beneficiaries</text>
+      </g>
+      <g transform="translate(868,384)">
+        <rect width="170" height="72" rx="14" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.6" filter="url(#lightShadow)"/>
+        <rect x="166" width="4" height="72" rx="2" fill="#059669"/>
+        <text x="14" y="26" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="#0f172a">FPS – B02</text>
+        <text x="14" y="42" font-family="Inter,sans-serif" font-size="9.5" fill="#64748b">Ward 21, Zone D</text>
+        <rect x="14" y="49" width="105" height="15" rx="7.5" fill="#ecfdf5"/>
+        <text x="24" y="60.5" font-family="Inter,sans-serif" font-size="8.5" fill="#047857" font-weight="700">740 beneficiaries</text>
+      </g>
+
+      <!-- Queue bar -->
+      <g transform="translate(390,488)">
+        <rect width="260" height="34" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.4" filter="url(#lightShadow)"/>
+        <text x="10" y="22" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="#64748b" letter-spacing="1">QUEUE →</text>
+        <rect x="58" y="5" width="40" height="24" rx="6" fill="#fef2f2" stroke="#f87171" stroke-width="1.2">
+          <animate attributeName="opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite"/>
+        </rect>
+        <text x="78" y="21" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#dc2626">Oct-24</text>
+        <rect x="102" y="5" width="40" height="24" rx="6" fill="#fefce8" stroke="#facc15" stroke-width="1.2"/>
+        <text x="122" y="21" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#ca8a04">Nov-24</text>
+        <rect x="146" y="5" width="40" height="24" rx="6" fill="#eef2ff" stroke="#818cf8" stroke-width="1.2"/>
+        <text x="166" y="21" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#4f46e5">Dec-24</text>
+        <rect x="190" y="5" width="40" height="24" rx="6" fill="#ecfdf5" stroke="#34d399" stroke-width="1.2"/>
+        <text x="210" y="21" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#059669">Jan-25</text>
+        <text x="234" y="21" font-family="Inter,sans-serif" font-size="11" fill="#dc2626">→</text>
+        <text x="244" y="21" font-family="Inter,sans-serif" font-size="7.5" font-weight="800" fill="#dc2626">OUT</text>
+      </g>
+    </svg>
+  </div>
+</div>
+
+<div class="step-card" id="step-info">
+  <div class="step-header">
+    <span class="step-badge" id="step-badge">Step 05</span>
+    <span class="step-title" id="step-title">Identify Oldest Eligible Batch (FIFO)</span>
+  </div>
+  <p class="step-desc" id="step-desc">
+    The deterministic FIFO algorithm queries active batches sorted ascending by arrival timestamp (receiptDate ASC). The oldest eligible grain stack is prioritized to prevent silent spoilage.
+  </p>
+</div>
+
+<script>
+  const steps = [
+    { badge: 'Step 01', title: 'Receive Stock', desc: 'Grain rail rakes and transport trucks arrive at the depot weighbridge for gross vs tare weight verification and initial gate entry logging.' },
+    { badge: 'Step 02', title: 'Digital Inward Logging', desc: 'Inspectors record commodity type, procurement source, lab moisture test percentage, stack coordinates, and stamp unique digital Batch IDs.' },
+    { badge: 'Step 03', title: 'Stock Stored', desc: 'Bags are stacked according to CPWD/FCI specifications in designated bays. System initiates the continuous ageing clock in the central database.' },
+    { badge: 'Step 04', title: 'Create Delivery Challan', desc: 'Fair Price Shop indents a monthly grain quota for ration card holders. Operator inputs recipient shop code and required metric tonnage.' },
+    { badge: 'Step 05', title: 'Identify Oldest Eligible Batch (FIFO)', desc: 'The deterministic FIFO algorithm queries active batches sorted ascending by arrival timestamp (receiptDate ASC). Prevents bypassing older grain.' },
+    { badge: 'Step 06', title: 'Check Batch Quantity', desc: 'Algorithm evaluates if available stock in oldest batch >= requested allocation. If adequate, single batch issue occurs. If not, multi-batch split triggers.' },
+    { badge: 'Step 07', title: 'Pull from Next Oldest Batches', desc: 'Exhausts 100% of the oldest stack before automatically decrementing from subsequent arrival dates until full demand is completely met.' },
+    { badge: 'Step 08', title: 'Allocate & Generate Delivery Challan', desc: 'System locks batches, issues unique dispatch serial number, and generates official Government Form-IV challan containing cryptographic QR code.' },
+    { badge: 'Step 09', title: 'Update Inventory', desc: 'Depot balances decrement instantly across all server instances. Stacks depleted to 0 MT are archived for fumigation clearance.' },
+    { badge: 'Step 10', title: 'Maintain Traceability', desc: 'A permanent digital link connects the FPS shop code to the exact godown bay, supplier mandi, arrival rail carriage, and inspection officer stamp.' },
+    { badge: 'Step 11', title: 'Alerts & Exception Management', desc: 'Monitors highlight lots nearing 90+ days. If a supervisor attempts to skip an older lot, system demands mandatory DFC credentials & justification.' },
+    { badge: 'Step 12', title: 'Centralized Dashboard', desc: 'Ministry and District Food Controllers monitor real-time FIFO compliance scores, regional grain velocity, and depot efficiency rankings.' }
+  ];
+
+  function showStep(idx) {
+    const s = steps[idx];
+    if (!s) return;
+    document.getElementById('step-badge').textContent = s.badge;
+    document.getElementById('step-title').textContent = s.title;
+    document.getElementById('step-desc').textContent = s.desc;
+  }
+
+  function switchView(view) {
+    document.getElementById('view-flow').style.display = view === 'flow' ? 'block' : 'none';
+    document.getElementById('view-net').style.display = view === 'net' ? 'block' : 'none';
+    document.getElementById('btn-flow').classList.toggle('active', view === 'flow');
+    document.getElementById('btn-net').classList.toggle('active', view === 'net');
+  }
+</script>
+</body>
+</html>
