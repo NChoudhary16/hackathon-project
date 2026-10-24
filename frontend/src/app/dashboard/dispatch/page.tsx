@@ -1,13 +1,14 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { AppShell } from '../../../components/AppShell';
-import { RoleDashboardSelector } from '../../../components/dashboards/RoleDashboardSelector';
 import { DispatchDashboardView } from '../../../components/dashboards/DispatchDashboardView';
+import { FifoDispatchModal } from '../../../components/FifoDispatchModal';
+import { useStockFlow } from '../../../lib/stockflow-context';
 
 export default function DispatchRoleDashboardPage() {
-  const router = useRouter();
+  const { batches, fairPriceShops, createDispatch } = useStockFlow();
+  const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
 
   return (
     <AppShell 
@@ -16,14 +17,32 @@ export default function DispatchRoleDashboardPage() {
       allowedRoles={['DISPATCH_OFFICER', 'ADMIN']}
     >
       <div className="space-y-6">
-        <RoleDashboardSelector
-          selectedDashboardRole="DISPATCH_OFFICER"
-          onSelectRole={(r) => {
-            if (r === 'DISPATCH_OFFICER') return;
-            router.push(`/dashboard/${r === 'ADMIN' ? 'admin' : r === 'GODOWN_MANAGER' ? 'manager' : r === 'QUALITY_INSPECTOR' ? 'quality' : 'fps'}`);
+        <DispatchDashboardView 
+          onOpenDispatchModal={() => setIsDispatchModalOpen(true)}
+        />
+
+        <FifoDispatchModal
+          isOpen={isDispatchModalOpen}
+          onClose={() => setIsDispatchModalOpen(false)}
+          batches={batches}
+          fairPriceShops={fairPriceShops}
+          onDispatchCreated={(challan) => {
+            createDispatch({
+              fpsId: challan.fpsId,
+              commodity: challan.commodity,
+              totalQuantityMt: challan.totalQuantityMt,
+              vehicleNumber: challan.vehicleNumber,
+              driverName: challan.driverName,
+              driverPhone: challan.driverPhone,
+              allocations: challan.allocatedBatches,
+              isFifoCompliant: challan.isFifoCompliant,
+              deviationJustification: challan.deviationJustification,
+              authorizedByOfficer: challan.authorizedByOfficer,
+              authorizationPinUsed: challan.authorizationPinUsed,
+            });
+            setIsDispatchModalOpen(false);
           }}
         />
-        <DispatchDashboardView />
       </div>
     </AppShell>
   );

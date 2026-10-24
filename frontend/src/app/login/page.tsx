@@ -1,220 +1,155 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  ShieldCheck, 
-  Lock, 
-  KeyRound, 
-  Building2, 
-  User, 
-  ArrowRight, 
-  Eye, 
-  EyeOff, 
-  AlertCircle, 
-  CheckCircle2, 
-  SlidersHorizontal, 
-  FlaskConical, 
-  Truck, 
-  Store, 
-  Sparkles,
-  Info,
+import {
+  ShieldCheck,
+  Building2,
+  SlidersHorizontal,
+  FlaskConical,
+  Truck,
+  Store,
+  ArrowRight,
+  Lock,
   Shield,
-  HelpCircle,
-  LogIn
+  Sparkles,
+  CheckCircle2,
+  ChevronRight,
+  UserPlus,
 } from 'lucide-react';
-import { useStockFlow, DEMO_LOGIN_CREDENTIALS, getRoleDashboardPath } from '../../lib/stockflow-context';
-import { Role } from '../../types/inventory';
+import { useStockFlow, getRoleDashboardPath } from '../../lib/stockflow-context';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { Role } from '../../types/inventory';
 
-function LoginContent() {
+const ROLE_PORTALS: {
+  role: Role;
+  slug: string;
+  title: string;
+  subtitle: string;
+  officer: string;
+  designation: string;
+  department: string;
+  icon: React.ElementType;
+  gradient: string;
+  borderColor: string;
+  badgeBg: string;
+  badgeText: string;
+  tag: string;
+  features: string[];
+}[] = [
+  {
+    role: 'ADMIN',
+    slug: 'admin',
+    title: 'State Administrator',
+    subtitle: 'Master governance, RBAC management & audit trails',
+    officer: 'Rajesh Kumar Sharma',
+    designation: 'Director (State Food & Civil Supplies)',
+    department: 'Central HQ Command & Cross-Godown Allocation',
+    icon: ShieldCheck,
+    gradient: 'from-rose-600 to-rose-700',
+    borderColor: 'border-rose-200 dark:border-rose-800 hover:border-rose-400',
+    badgeBg: 'bg-rose-50 dark:bg-rose-950/60',
+    badgeText: 'text-rose-700 dark:text-rose-300',
+    tag: 'Executive Authority',
+    features: ['Full system access', 'User RBAC management', 'Cross-godown visibility', 'Audit logs'],
+  },
+  {
+    role: 'GODOWN_MANAGER',
+    slug: 'manager',
+    title: 'Godown Superintendent',
+    subtitle: 'Depot operations, inward receipts & stack management',
+    officer: 'S. K. Verma',
+    designation: 'Godown Manager / Depot In-Charge',
+    department: 'FCI Central Depot Okhla (Unit-4)',
+    icon: SlidersHorizontal,
+    gradient: 'from-blue-600 to-blue-700',
+    borderColor: 'border-blue-200 dark:border-blue-800 hover:border-blue-400',
+    badgeBg: 'bg-blue-50 dark:bg-blue-950/60',
+    badgeText: 'text-blue-700 dark:text-blue-300',
+    tag: 'Depot Operations',
+    features: ['Inward stock receipts', 'Stack & silo management', 'Stock ageing monitor', 'Bay explorer'],
+  },
+  {
+    role: 'QUALITY_INSPECTOR',
+    slug: 'quality',
+    title: 'Quality & AGMARK Inspector',
+    subtitle: 'Lab moisture testing, grading & quarantine control',
+    officer: 'Anjali Gupta',
+    designation: 'Chief Quality Inspector & Lab Chemist',
+    department: 'Agmark Central Grain Inspection Cell',
+    icon: FlaskConical,
+    gradient: 'from-emerald-600 to-emerald-700',
+    borderColor: 'border-emerald-200 dark:border-emerald-800 hover:border-emerald-400',
+    badgeBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    tag: 'Moisture & Grading',
+    features: ['AGMARK certification', 'Moisture testing', 'Quarantine lockouts', 'Lab assay reports'],
+  },
+  {
+    role: 'DISPATCH_OFFICER',
+    slug: 'dispatch',
+    title: 'Dispatch & Fleet Officer',
+    subtitle: 'FIFO allocation, weighbridge & gate pass issuance',
+    officer: 'Harpreet Singh',
+    designation: 'Logistics & Weighbridge Supervisor',
+    department: 'Civil Supplies Fleet & Outward Dispatch',
+    icon: Truck,
+    gradient: 'from-amber-500 to-amber-600',
+    borderColor: 'border-amber-200 dark:border-amber-800 hover:border-amber-400',
+    badgeBg: 'bg-amber-50 dark:bg-amber-950/60',
+    badgeText: 'text-amber-700 dark:text-amber-300',
+    tag: 'FIFO & Gate Passes',
+    features: ['FIFO dispatch engine', 'Delivery challans', 'Weighbridge gate passes', 'FPS allocation'],
+  },
+  {
+    role: 'FPS_DEALER',
+    slug: 'fps',
+    title: 'Fair Price Shop Dealer',
+    subtitle: 'Ration quota distribution & delivery acknowledgment',
+    officer: 'Ramesh Chaurasia',
+    designation: 'Ration Shop Authorized Dealer #412',
+    department: 'National Food Security Act (NFSA) Retail Branch',
+    icon: Store,
+    gradient: 'from-purple-600 to-purple-700',
+    borderColor: 'border-purple-200 dark:border-purple-800 hover:border-purple-400',
+    badgeBg: 'bg-purple-50 dark:bg-purple-950/60',
+    badgeText: 'text-purple-700 dark:text-purple-300',
+    tag: 'PDS Beneficiary Quota',
+    features: ['Quota tracking', 'Delivery acknowledgment', 'QR code scanner', 'Stock receipts'],
+  },
+];
+
+export default function LoginPortalSelector() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectParam = searchParams.get('redirect');
+  const { isAuthenticated, isAuthReady, currentRole } = useStockFlow();
 
-  const { 
-    login, 
-    isAuthenticated, 
-    isAuthReady, 
-    currentRole, 
-    currentUser 
-  } = useStockFlow();
-
-  const [activeTab, setActiveTab] = useState<'quick' | 'credentials'>('quick');
-  const [selectedRole, setSelectedRole] = useState<Role>('ADMIN');
-  const [emailInput, setEmailInput] = useState('admin@stockflow.gov.in');
-  const [passwordInput, setPasswordInput] = useState('123456');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberTerminal, setRememberTerminal] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginSuccessRole, setLoginSuccessRole] = useState<Role | null>(null);
-
-  // If already logged in, redirect to intended target or user's role dashboard
+  // If already logged in, redirect to their dashboard
   useEffect(() => {
-    if (isAuthReady && isAuthenticated && !loginSuccessRole) {
-      const target = redirectParam || getRoleDashboardPath(currentRole);
-      router.replace(target);
+    if (isAuthReady && isAuthenticated) {
+      router.replace(getRoleDashboardPath(currentRole));
     }
-  }, [isAuthReady, isAuthenticated, currentRole, redirectParam, router, loginSuccessRole]);
-
-  // Handle Quick 1-Click Role Login
-  const handleQuickLogin = (role: Role) => {
-    setIsSubmitting(true);
-    setErrorMessage(null);
-    setLoginSuccessRole(role);
-
-    setTimeout(() => {
-      const res = login({ role });
-      if (res.success && res.user) {
-        const target = redirectParam || getRoleDashboardPath(role);
-        router.push(target);
-      } else {
-        setErrorMessage(res.error || 'Authentication failed. Please try again.');
-        setIsSubmitting(false);
-        setLoginSuccessRole(null);
-      }
-    }, 450);
-  };
-
-  // Handle Manual Form Submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput.trim()) {
-      setErrorMessage('Please enter your Officer Email or Government ID.');
-      return;
-    }
-    if (!passwordInput.trim()) {
-      setErrorMessage('Please enter your Security PIN or Password.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    setTimeout(() => {
-      const res = login({
-        email: emailInput,
-        password: passwordInput,
-      });
-
-      if (res.success && res.user) {
-        setLoginSuccessRole(res.user.role);
-        const target = redirectParam || getRoleDashboardPath(res.user.role);
-        router.push(target);
-      } else {
-        setErrorMessage(res.error || 'Invalid credentials. Enter demo PIN 123456.');
-        setIsSubmitting(false);
-      }
-    }, 500);
-  };
-
-  // Preset role selection helper for Credentials Tab
-  const selectRoleCredentials = (role: Role) => {
-    setSelectedRole(role);
-    const creds = DEMO_LOGIN_CREDENTIALS[role];
-    if (creds) {
-      setEmailInput(creds.email);
-      setPasswordInput(creds.defaultPin);
-    }
-  };
-
-  const roleCards: {
-    role: Role;
-    title: string;
-    officer: string;
-    designation: string;
-    department: string;
-    icon: React.ElementType;
-    badgeColor: string;
-    cardBorder: string;
-    accentBg: string;
-    tag: string;
-  }[] = [
-    {
-      role: 'ADMIN',
-      title: 'State Director / Admin',
-      officer: 'Rajesh Kumar Sharma',
-      designation: 'Director (State Food & Civil Supplies)',
-      department: 'Central HQ Command & Cross-Godown Allocation',
-      icon: Building2,
-      badgeColor: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800',
-      cardBorder: 'hover:border-rose-500/60 dark:hover:border-rose-500/60',
-      accentBg: 'from-rose-500/10 to-transparent',
-      tag: 'Executive Authority',
-    },
-    {
-      role: 'GODOWN_MANAGER',
-      title: 'Depot Superintendent',
-      officer: 'S. K. Verma',
-      designation: 'Godown Manager / Depot In-Charge',
-      department: 'FCI Central Depot Okhla (Unit-4)',
-      icon: SlidersHorizontal,
-      badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800',
-      cardBorder: 'hover:border-blue-500/60 dark:hover:border-blue-500/60',
-      accentBg: 'from-blue-500/10 to-transparent',
-      tag: 'Depot Operations',
-    },
-    {
-      role: 'QUALITY_INSPECTOR',
-      title: 'Quality & AGMARK Chemist',
-      officer: 'Anjali Gupta',
-      designation: 'Chief Quality Inspector & Lab Chemist',
-      department: 'Agmark Central Grain Inspection Cell',
-      icon: FlaskConical,
-      badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
-      cardBorder: 'hover:border-emerald-500/60 dark:hover:border-emerald-500/60',
-      accentBg: 'from-emerald-500/10 to-transparent',
-      tag: 'Moisture & Grading',
-    },
-    {
-      role: 'DISPATCH_OFFICER',
-      title: 'Dispatch & Fleet Officer',
-      officer: 'Harpreet Singh',
-      designation: 'Logistics & Weighbridge Supervisor',
-      department: 'Civil Supplies Fleet & Outward Dispatch',
-      icon: Truck,
-      badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800',
-      cardBorder: 'hover:border-amber-500/60 dark:hover:border-amber-500/60',
-      accentBg: 'from-amber-500/10 to-transparent',
-      tag: 'FIFO & Gate Passes',
-    },
-    {
-      role: 'FPS_DEALER',
-      title: 'Fair Price Shop Dealer',
-      officer: 'Ramesh Chaurasia',
-      designation: 'Ration Shop Authorized Dealer #412',
-      department: 'National Food Security Act (NFSA) Retail Branch',
-      icon: Store,
-      badgeColor: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800',
-      cardBorder: 'hover:border-purple-500/60 dark:hover:border-purple-500/60',
-      accentBg: 'from-purple-500/10 to-transparent',
-      tag: 'PDS Beneficiary Quota',
-    },
-  ];
+  }, [isAuthReady, isAuthenticated, currentRole, router]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white transition-colors duration-200">
-      {/* Top Government Portal Branding Bar */}
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col transition-colors duration-200">
+      {/* Top Bar */}
       <header className="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-8 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* Subtle Indian Tricolor emblem motif */}
           <div className="flex flex-col gap-0.5 w-1.5 h-7 rounded-full overflow-hidden">
             <span className="flex-1 bg-amber-500" />
             <span className="flex-1 bg-white border border-zinc-300 dark:border-zinc-700" />
             <span className="flex-1 bg-emerald-600" />
           </div>
-
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-linear-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white flex items-center justify-center shadow-sm">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <div className="font-extrabold text-sm tracking-tight flex items-center gap-1.5">
                 <span>StockFlow</span>
                 <span className="text-blue-600 dark:text-blue-400">iPDS</span>
-                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                   NFSA 2013
                 </span>
               </div>
@@ -224,309 +159,128 @@ function LoginContent() {
             </div>
           </div>
         </div>
-
         <div className="flex items-center gap-3">
-          <ThemeToggle variant="segmented" />
           <Link
-            href="/"
-            className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 transition"
+            href="/signup"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
           >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Officer Registration</span>
+          </Link>
+          <ThemeToggle variant="segmented" />
+          <Link href="/" className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 transition">
             Public Site
           </Link>
         </div>
       </header>
 
-      {/* Main Login Stage */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
-        <div className="w-full max-w-4xl">
-          {/* Header Announcement */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-3 shadow-xs">
+      {/* Hero */}
+      <main className="flex-1 flex flex-col items-center justify-start px-4 sm:px-6 py-12">
+        <div className="w-full max-w-5xl">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold mb-4 shadow-sm">
               <Shield className="w-3.5 h-3.5" />
-              <span>Departmental Single Sign-On (SSO) & Role-Based Access Control</span>
+              <span>Departmental Single Sign-On — Role-Based Access Control (RBAC)</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
               Officer Authentication Gateway
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-2 max-w-xl mx-auto">
-              Select your departmental role persona for 1-click evaluation access, or authenticate with your official NIC Security PIN.
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-3 max-w-xl mx-auto leading-relaxed">
+              Select your departmental role to access your dedicated command portal. Each role has a secure, isolated login.
             </p>
           </div>
 
-          {/* Card Container */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl overflow-hidden">
-            {/* Tab Navigation */}
-            <div className="grid grid-cols-2 border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold bg-zinc-50/50 dark:bg-zinc-950/50">
-              <button
-                type="button"
-                onClick={() => { setActiveTab('quick'); setErrorMessage(null); }}
-                className={`py-3.5 px-4 flex items-center justify-center gap-2 transition cursor-pointer border-b-2 ${
-                  activeTab === 'quick'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-zinc-900'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Quick Role Personas (1-Click Demo)</span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                  Recommended
-                </span>
-              </button>
+          {/* Role Portal Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ROLE_PORTALS.map((portal) => {
+              const Icon = portal.icon;
+              return (
+                <Link
+                  key={portal.role}
+                  href={`/login/${portal.slug}`}
+                  className={`group relative bg-white dark:bg-zinc-900 rounded-2xl border ${portal.borderColor} dark:border-zinc-800 p-5 flex flex-col transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer`}
+                >
+                  {/* Top row */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${portal.gradient} text-white flex items-center justify-center shadow-sm`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${portal.badgeBg} ${portal.badgeText} border-current/20`}>
+                      {portal.tag}
+                    </span>
+                  </div>
 
-              <button
-                type="button"
-                onClick={() => { setActiveTab('credentials'); setErrorMessage(null); }}
-                className={`py-3.5 px-4 flex items-center justify-center gap-2 transition cursor-pointer border-b-2 ${
-                  activeTab === 'credentials'
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-zinc-900'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                }`}
-              >
-                <KeyRound className="w-4 h-4 text-zinc-500" />
-                <span>Official NIC Credentials / PIN</span>
-              </button>
+                  {/* Title & Info */}
+                  <h3 className="font-bold text-base text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition mb-0.5">
+                    {portal.title}
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-3 leading-relaxed">
+                    {portal.subtitle}
+                  </p>
+
+                  {/* Feature list */}
+                  <ul className="space-y-1 mb-4 flex-1">
+                    {portal.features.map((feat) => (
+                      <li key={feat} className="flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA Footer */}
+                  <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{portal.officer}</div>
+                      <div className="text-[10px] text-zinc-400">{portal.designation}</div>
+                    </div>
+                    <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Info & Registration Banner */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-3">
+              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">Demo Officer Accounts:</span> All roles come preloaded with official demo credentials and PIN{' '}
+                <code className="font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">123456</code>.
+              </div>
             </div>
 
-            {/* Error Banner */}
-            {errorMessage && (
-              <div className="m-6 mb-0 p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/80 text-red-700 dark:text-red-300 flex items-start gap-3 text-xs animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
-                <div className="flex-1">{errorMessage}</div>
-              </div>
-            )}
-
-            {/* TAB 1: QUICK ROLE PERSONAS (1-CLICK EVALUATION ACCESS) */}
-            {activeTab === 'quick' && (
-              <div className="p-6 sm:p-8 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                    Choose Authorized Operational Role
-                  </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Auto-redirects to dedicated role dashboard
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                  {roleCards.map((c) => {
-                    const Icon = c.icon;
-                    const isSelected = loginSuccessRole === c.role;
-                    return (
-                      <div
-                        key={c.role}
-                        className={`group relative rounded-2xl border p-4 transition-all duration-200 flex flex-col justify-between bg-zinc-50/50 dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-800/80 ${c.cardBorder} hover:shadow-md ${
-                          isSelected ? 'ring-2 ring-blue-600 bg-blue-50/20' : ''
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${c.badgeColor}`}>
-                              {c.tag}
-                            </span>
-                            <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:scale-105 transition">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                          </div>
-
-                          <h3 className="font-bold text-sm text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                            {c.title}
-                          </h3>
-
-                          <div className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 mt-1">
-                            {c.officer}
-                          </div>
-
-                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
-                            {c.department}
-                          </p>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-zinc-200/70 dark:border-zinc-800/70">
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={() => handleQuickLogin(c.role)}
-                            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-60"
-                          >
-                            {isSelected ? (
-                              <>
-                                <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                <span>Authenticating...</span>
-                              </>
-                            ) : (
-                              <>
-                                <LogIn className="w-3.5 h-3.5" />
-                                <span>Sign In as {c.role.replace('_', ' ')}</span>
-                                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition" />
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-3">
-                  <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">Role-Based Dashboard Routing:</span> Each persona lands on their respective command center — from State Director master allocation, Depot Superintendent inward receipts, AGMARK laboratory assays, to Fair Price Shop allocation logs.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: OFFICIAL NIC CREDENTIALS / PIN */}
-            {activeTab === 'credentials' && (
-              <div className="p-6 sm:p-8">
-                {/* Fast Role Pre-loader Chips */}
-                <div className="mb-6">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">
-                    Quick-Fill Profile Credentials
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {(['ADMIN', 'GODOWN_MANAGER', 'QUALITY_INSPECTOR', 'DISPATCH_OFFICER', 'FPS_DEALER'] as Role[]).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => selectRoleCredentials(r)}
-                        className={`text-xs px-3 py-1.5 rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
-                          selectedRole === r
-                            ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                            : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                        }`}
-                      >
-                        <span>{r.replace('_', ' ')}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-                  <div>
-                    <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 block mb-1.5">
-                      Officer Email / NIC Official ID
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                      <input
-                        type="email"
-                        required
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        placeholder="officer@stockflow.gov.in"
-                        className="w-full text-xs pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                        Security PIN / Password
-                      </label>
-                      <span className="text-[11px] text-zinc-400">
-                        Demo PIN: <strong className="font-mono text-blue-600">123456</strong>
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        placeholder="Enter 6-digit security PIN"
-                        className="w-full text-xs pl-10 pr-10 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-                        title={showPassword ? 'Hide PIN' : 'Show PIN'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 text-xs">
-                    <label className="flex items-center gap-2 cursor-pointer text-zinc-600 dark:text-zinc-400">
-                      <input
-                        type="checkbox"
-                        checked={rememberTerminal}
-                        onChange={(e) => setRememberTerminal(e.target.checked)}
-                        className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>Remember this terminal session</span>
-                    </label>
-
-                    <button
-                      type="button"
-                      onClick={() => setPasswordInput('123456')}
-                      className="text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      Reset to Default PIN (123456)
-                    </button>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-600/20 transition cursor-pointer disabled:opacity-60"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                          <span>Verifying Officer Clearance...</span>
-                        </>
-                      ) : (
-                        <>
-                          <KeyRound className="w-4 h-4" />
-                          <span>Authenticate & Open Role Dashboard</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {/* Security Verification Bar */}
-            <div className="px-6 py-4 bg-zinc-50 dark:bg-zinc-950/80 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>NIC PDS Gateway Simulation • 256-Bit TLS Audit Active</span>
-              </div>
+            <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs flex items-center justify-between gap-3">
               <div>
-                <span>National Food Security Act (NFSA) 2013</span>
+                <div className="font-semibold text-zinc-900 dark:text-white">Need a new officer or dealer account?</div>
+                <div className="text-[11px] text-zinc-500">Register under your specific operational role.</div>
               </div>
+              <Link
+                href="/signup"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold text-xs hover:opacity-90 transition shrink-0"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Register Role</span>
+              </Link>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Portal Footer */}
+      {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 py-4 px-4 text-center text-xs text-zinc-500 bg-white/50 dark:bg-zinc-900/50">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>StockFlow iPDS • Government Food-Grain Godown Management System</span>
-          <span className="text-zinc-400 text-[11px]">Authorized Departmental Use Only</span>
+          <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <Lock className="w-3 h-3" />
+            Authorized Departmental Use Only
+          </span>
         </div>
       </footer>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white text-xs">
-        Loading Authentication Portal...
-      </div>
-    }>
-      <LoginContent />
-    </Suspense>
   );
 }

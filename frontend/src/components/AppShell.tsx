@@ -37,7 +37,6 @@ import { useStockFlow } from '../lib/stockflow-context';
 import { InwardStockModal } from './InwardStockModal';
 import { FifoDispatchModal } from './FifoDispatchModal';
 import { ThemeToggle } from './ThemeToggle';
-import { RbacRoleSwitcher } from './RbacRoleSwitcher';
 import { AuthGuard } from './AuthGuard';
 import { Role, Permission } from '../types/inventory';
 
@@ -72,7 +71,9 @@ export function AppShell({
     addStockReceipt,
     createDispatch,
     resetAllData,
-    logout
+    logout,
+    backendConnected,
+    syncWithBackend
   } = useStockFlow();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -321,28 +322,19 @@ export function AppShell({
                 </button>
               </div>
 
-              <div className="my-3 space-y-2">
-                <div>
-                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Active RBAC Session
-                  </label>
-                  <RbacRoleSwitcher />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
-                    Active Godown
-                  </label>
-                  <select
-                    value={selectedGodownId}
-                    onChange={(e) => setSelectedGodownId(e.target.value)}
-                    className="w-full text-xs p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
-                  >
-                    {allGodowns.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="my-3">
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block mb-1">
+                  Active Godown
+                </label>
+                <select
+                  value={selectedGodownId}
+                  onChange={(e) => setSelectedGodownId(e.target.value)}
+                  className="w-full text-xs p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+                >
+                  {allGodowns.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
               </div>
 
               <nav className="flex-1 space-y-1 overflow-y-auto">
@@ -531,8 +523,20 @@ export function AppShell({
                 </select>
               </div>
 
-              {/* RBAC Role Switcher */}
-              <RbacRoleSwitcher />
+              {/* Live Backend Connection Indicator */}
+              <button
+                type="button"
+                onClick={() => syncWithBackend()}
+                title={backendConnected ? 'Connected to live PostgreSQL Backend API (Port 5000)' : 'Click to reconnect to Express backend API (Port 5000)'}
+                className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition cursor-pointer ${
+                  backendConnected
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'
+                    : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/80 text-amber-700 dark:text-amber-400 hover:bg-amber-100'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{backendConnected ? 'API Live: PG SQL' : 'Local Demo Mode'}</span>
+              </button>
 
               {/* Theme Toggle Button */}
               <ThemeToggle />

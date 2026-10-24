@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const suppliers_controller_1 = require("./suppliers.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
-router.get('/', suppliers_controller_1.SuppliersController.list);
+router.get('/', auth_middleware_1.authenticate, (0, auth_middleware_1.authorizeRoles)(client_1.Role.ADMIN, client_1.Role.GODOWN_MANAGER, client_1.Role.QUALITY_INSPECTOR, client_1.Role.DISPATCH_OFFICER), suppliers_controller_1.SuppliersController.list);
 exports.default = router;

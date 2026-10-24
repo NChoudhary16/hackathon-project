@@ -9,10 +9,7 @@ import {
   Lock, 
   ArrowRight, 
   KeyRound, 
-  Building2, 
-  UserCheck, 
-  RotateCcw,
-  Sparkles,
+  LogIn,
   ExternalLink
 } from 'lucide-react';
 import { useStockFlow, getRoleDashboardPath } from '../lib/stockflow-context';
@@ -39,7 +36,6 @@ export function AuthGuard({
     currentUser, 
     currentRole, 
     hasPermission, 
-    switchRole 
   } = useStockFlow();
 
   // Redirect to login if auth is ready but user is not authenticated
@@ -129,7 +125,16 @@ export function AuthGuard({
   // Role restriction check
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(currentRole)) {
     const userRoleDashboard = getRoleDashboardPath(currentRole);
-    const recommendedRole = allowedRoles[0];
+
+    // Map Role → login slug
+    const roleToSlug: Record<string, string> = {
+      ADMIN: 'admin',
+      GODOWN_MANAGER: 'manager',
+      QUALITY_INSPECTOR: 'quality',
+      DISPATCH_OFFICER: 'dispatch',
+      FPS_DEALER: 'fps',
+    };
+    const requiredSlug = roleToSlug[allowedRoles[0]] || 'admin';
 
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-4">
@@ -148,7 +153,7 @@ export function AuthGuard({
 
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-3 leading-relaxed max-w-md mx-auto">
             You are authenticated as <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{currentUser.name}</strong> (<span className="font-mono text-blue-600 dark:text-blue-400">{currentRole}</span>). 
-            Under NFSA inventory protocols, this section is designated exclusively for designated personnel.
+            This section requires a different role. Please sign out and log in with the appropriate portal.
           </p>
 
           <div className="p-4 my-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 text-left text-xs space-y-1.5">
@@ -175,14 +180,13 @@ export function AuthGuard({
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
 
-            {/* Quick Demo Switcher */}
-            <button
-              onClick={() => switchRole(recommendedRole)}
+            <Link
+              href={`/login/${requiredSlug}`}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs border border-zinc-200 dark:border-zinc-700 transition cursor-pointer"
             >
-              <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Switch to {recommendedRole.replace('_', ' ')} (Demo)</span>
-            </button>
+              <LogIn className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Sign in as {allowedRoles[0].replace('_', ' ')}</span>
+            </Link>
           </div>
         </div>
       </div>

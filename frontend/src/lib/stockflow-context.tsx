@@ -40,6 +40,7 @@ import {
   INITIAL_FIFO_EXCEPTIONS
 } from './mock-data';
 import { calculateStockAge, calculateSpoilageRisk } from './fifo-engine';
+import { api } from './api';
 
 interface CreateReceiptInput {
   receiptNumber: string;
@@ -104,7 +105,7 @@ interface StockFlowContextType {
   switchRole: (role: Role) => void;
   switchUser: (userId: string) => void;
   updateUserRole: (userId: string, newRole: Role, newGodownId?: string) => void;
-  addUser: (user: Omit<UserProfile, 'id'>) => void;
+  addUser: (user: Omit<UserProfile, 'id'>) => UserProfile;
 
   // Master Entities
   suppliers: SupplierEntity[];
@@ -127,6 +128,10 @@ interface StockFlowContextType {
   addSupplier: (supplier: SupplierEntity) => void;
   addFairPriceShop: (fps: FairPriceShop) => void;
   resetAllData: () => void;
+
+  // Backend Integration
+  backendConnected: boolean;
+  syncWithBackend: () => Promise<void>;
 }
 
 const StockFlowContext = createContext<StockFlowContextType | undefined>(undefined);
@@ -281,6 +286,63 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Backend Integration State
+  const [backendConnected, setBackendConnected] = useState<boolean>(false);
+
+  // Sync with live Express + PostgreSQL Backend
+  const syncWithBackend = async () => {
+    try {
+      const health = await api.checkHealth();
+      if (health && (health.status === 'UP' || health.success)) {
+        setBackendConnected(true);
+
+        // Fetch live inventory from backend
+        try {
+          const invRes = await api.getInventory({ godownId: selectedGodownId });
+          if (invRes?.data && Array.isArray(invRes.data) && invRes.data.length > 0) {
+            const mappedBatches: Batch[] = invRes.data.map((b: any) => ({
+              id: b.batchNumber || b.id,
+              commodity: (b.commodityCode?.toLowerCase() || 'wheat') as CommodityType,
+              commodityName: b.commodityName || 'Wheat',
+              variety: b.variety || 'Standard FAQ',
+              supplier: b.supplierName || 'Food Corporation of India (FCI)',
+              supplierState: b.supplierState || 'Punjab',
+              receiptDate: b.receiptDate || new Date().toISOString().slice(0, 10),
+              expiryDate: b.expiryDate || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+              initialQuantityMt: b.initialQuantityMt || (b.initialQuantityKg ? b.initialQuantityKg / 1000 : 0),
+              currentQuantityMt: b.remainingQuantityMt || (b.remainingQuantityKg ? b.remainingQuantityKg / 1000 : 0),
+              bagCount: b.bagCount || 0,
+              bagSizeKg: 50,
+              stackLocation: b.stackLocation || 'Bay A-1, Stack 1',
+              bayId: b.bayId || 'A1',
+              moistureContentPercent: b.moisturePercent || 11.5,
+              qualityGrade: b.qualityGrade === 'GRADE_A' ? 'Grade-A' : b.qualityGrade === 'GRADE_B' ? 'Grade-B' : b.qualityGrade === 'QUARANTINE' ? 'Quarantine' : 'Damaged',
+              status: b.status === 'ACTIVE' ? 'active' : b.status === 'EXHAUSTED' ? 'exhausted' : b.status === 'QUARANTINE' ? 'quarantine' : 'fumigation_lockout',
+              labReportNo: b.labReportNo || 'LAB-FCI-2026-001',
+              fumigationDueDate: new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10),
+              lastFumigationDate: new Date().toISOString().slice(0, 10),
+              ageDays: b.ageDays || 10,
+              spoilageRiskScore: b.spoilageRiskScore || 15,
+            }));
+            setBatches(mappedBatches);
+          }
+        } catch (err) {
+          console.log('Backend inventory pull info:', err);
+        }
+      } else {
+        setBackendConnected(false);
+      }
+    } catch {
+      setBackendConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isClient) {
+      syncWithBackend();
+    }
+  }, [isClient, selectedGodownId]);
+
   // Sync to storage
   useEffect(() => {
     if (!isClient) return;
@@ -379,14 +441,22 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
     let targetUser: UserProfile | undefined;
     if (userId) {
       targetUser = users.find((u) => u.id === userId);
-    } else if (role) {
-      targetUser = users.find((u) => u.role === role);
     } else if (email) {
       targetUser = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    } else if (role) {
+      targetUser = users.find((u) => u.role === role);
     }
 
     if (!targetUser) {
       return { success: false, error: 'Officer identification or email not found in NFSA registry.' };
+    }
+
+    // If role was specified (e.g. from dedicated portal), ensure targetUser role matches
+    if (role && targetUser.role !== role) {
+      return { 
+        success: false, 
+        error: `This officer account is registered as ${targetUser.role.replace('_', ' ')}. Please sign in through the dedicated ${targetUser.role.replace('_', ' ')} portal.` 
+      };
     }
 
     // Check credentials (PIN/password) if provided
@@ -394,9 +464,9 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
       const pin = password.trim();
       const validPins = ['123456', 'admin123', 'manager123', 'quality123', 'dispatch123', 'fps123', 'password', 'nic@2026', 'demo'];
       const matchesRole = pin.toLowerCase().includes(targetUser.role.toLowerCase().slice(0, 4));
-      // In demo/test mode, accept default pin 123456, role passwords, or standard pins
+      // In demo/test mode, accept default pin 123456, role passwords, or any password >= 4 chars
       if (!validPins.includes(pin) && !matchesRole && pin.length < 4) {
-        return { success: false, error: 'Invalid Security PIN. Default test PIN is 123456.' };
+        return { success: false, error: 'Invalid Security PIN or password. Minimum 4 characters required.' };
       }
     }
 
@@ -424,11 +494,23 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
       'SUCCESS'
     );
 
+    if (targetUser.email) {
+      api.login({ email: targetUser.email, password: password || 'Password@123' })
+        .then((res) => {
+          if (res?.data?.token) {
+            api.setToken(res.data.token);
+            setBackendConnected(true);
+          }
+        })
+        .catch((err) => console.log('Backend auth notice:', err));
+    }
+
     return { success: true, user: targetUser };
   };
 
   const logout = () => {
     setIsAuthenticated(false);
+    api.setToken(null);
     try {
       localStorage.removeItem(STORAGE_KEYS.AUTH_SESSION);
     } catch {}
@@ -457,13 +539,20 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
     addAuditLog('USER_ROLE_UPDATED', 'User', userId, `Updated role to ${newRole}`, 'SUCCESS');
   };
 
-  const addUser = (newUser: Omit<UserProfile, 'id'>) => {
+  const addUser = (newUser: Omit<UserProfile, 'id'>): UserProfile => {
     const user: UserProfile = {
       ...newUser,
       id: `usr_${Date.now()}`,
     };
-    setUsers((prev) => [user, ...prev]);
-    addAuditLog('USER_REGISTERED', 'User', user.id, `Created user ${user.name} (${user.role})`, 'SUCCESS');
+    setUsers((prev) => {
+      const updated = [user, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    addAuditLog('USER_REGISTERED', 'User', user.id, `Created officer ${user.name} (${user.role})`, 'SUCCESS');
+    return user;
   };
 
   // Current selected godown profile
@@ -635,6 +724,24 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
       input.qualityGrade === 'Quarantine' ? 'WARNING' : 'SUCCESS'
     );
 
+    if (backendConnected) {
+      api.createReceipt({
+        receiptNumber: input.receiptNumber,
+        godownId: selectedGodownId,
+        supplierId: input.supplier,
+        commodityId: input.commodity,
+        variety: input.variety,
+        receiptDate: input.receiptDate,
+        expiryDate: input.expiryDate,
+        quantityMt: input.quantityMt,
+        qualityGrade: input.qualityGrade === 'Grade-A' ? 'GRADE_A' : input.qualityGrade === 'Grade-B' ? 'GRADE_B' : input.qualityGrade === 'Quarantine' ? 'QUARANTINE' : 'DAMAGED',
+        stackLocation: input.stackLocation,
+        bayId: input.bayId,
+        moisturePercent: input.moisturePercent,
+        labReportNo: input.labReportNo,
+      }).catch((err) => console.log('Async backend receipt creation note:', err));
+    }
+
     return { success: true, receipt: newReceipt, batch: newBatch };
   };
 
@@ -756,6 +863,20 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
       `Issued Challan for ${input.totalQuantityMt} MT ${newChallan.commodityName} to ${targetFps.name}. Vehicle: ${input.vehicleNumber}. FIFO: ${input.isFifoCompliant ? 'Strict' : 'Deviation'}`,
       input.isFifoCompliant ? 'SUCCESS' : 'EXCEPTION'
     );
+
+    if (backendConnected) {
+      api.createChallan({
+        godownId: selectedGodownId,
+        fpsId: input.fpsId,
+        commodityId: input.commodity,
+        quantityMt: input.totalQuantityMt,
+        vehicleNumber: input.vehicleNumber,
+        driverName: input.driverName,
+        driverPhone: input.driverPhone,
+        targetBatchId: input.allocations[0]?.batchId,
+        exceptionReason: input.deviationJustification,
+      }).catch((err) => console.log('Async backend challan dispatch note:', err));
+    }
 
     return { success: true, challan: newChallan };
   };
@@ -983,6 +1104,8 @@ export function StockFlowProvider({ children }: { children: ReactNode }) {
         addSupplier,
         addFairPriceShop,
         resetAllData,
+        backendConnected,
+        syncWithBackend,
       }}
     >
       {children}

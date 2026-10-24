@@ -23,6 +23,7 @@ const fifo_routes_1 = __importDefault(require("./modules/fifo/fifo.routes"));
 const challans_routes_1 = __importDefault(require("./modules/challans/challans.routes"));
 const movements_routes_1 = __importDefault(require("./modules/movements/movements.routes"));
 const reports_routes_1 = __importDefault(require("./modules/reports/reports.routes"));
+const audit_routes_1 = __importDefault(require("./modules/audit/audit.routes"));
 function createApp() {
     const app = (0, express_1.default)();
     // Security & Utility Middlewares
@@ -71,6 +72,7 @@ function createApp() {
     app.use('/api/challans', challans_routes_1.default);
     app.use('/api/movements', movements_routes_1.default);
     app.use('/api/reports', reports_routes_1.default);
+    app.use('/api/audit', audit_routes_1.default);
     // 404 Route Handler
     app.use((req, res) => {
         res.status(404).json({

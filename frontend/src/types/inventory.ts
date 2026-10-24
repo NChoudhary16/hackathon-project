@@ -223,6 +223,8 @@ export interface UserProfile {
   department: string;
   godownId?: string;
   godownName?: string;
+  phone?: string;
+  fpsId?: string;
   active: boolean;
   avatarLetter: string;
   avatarColor: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, 
   Pause, 
@@ -212,6 +212,25 @@ export function FifoWorkflowVisualizer() {
   const [selectedStepId, setSelectedStepId] = useState<string>('identify-oldest');
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(4);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  // Sync SVG animations with isPlaying state
+  useEffect(() => {
+    if (!svgRef.current) return;
+    try {
+      if (isPlaying) {
+        if (typeof svgRef.current.unpauseAnimations === 'function') {
+          svgRef.current.unpauseAnimations();
+        }
+      } else {
+        if (typeof svgRef.current.pauseAnimations === 'function') {
+          svgRef.current.pauseAnimations();
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [isPlaying]);
 
   // Auto-step simulation loop
   useEffect(() => {
@@ -319,19 +338,35 @@ export function FifoWorkflowVisualizer() {
             <div className="space-y-4 relative z-10">
               <div className="w-full overflow-x-auto pb-2 scrollbar-thin">
                 <svg 
+                  ref={svgRef}
                   viewBox="0 0 1140 560" 
                   className="w-full min-w-[980px] h-auto select-none"
                 >
                   <defs>
                     <filter id="lightShadow" x="-10%" y="-10%" width="125%" height="125%">
-                      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.06" />
+                      <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#0f172a" floodOpacity="0.06" />
                     </filter>
                     <filter id="activeShadow" x="-15%" y="-15%" width="130%" height="130%">
-                      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2563eb" flood-opacity="0.18" />
+                      <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#2563eb" floodOpacity="0.18" />
+                    </filter>
+                    <filter id="dotGlow" x="-60%" y="-60%" width="220%" height="220%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
                     </filter>
                   </defs>
 
-                  {/* ───────────────── CONNECTING FLOW PATHS (CRISP SOLID TONES) ───────────────── */}
+                  {/* ───────────────── CONNECTING FLOW PATHS (CLEAN CRISP TRACKS) ───────────────── */}
+
+                  {/* MASTER FULL PROCESS PATH (Follows the sequential journey through the entire workflow) */}
+                  <path 
+                    id="unified-process-path" 
+                    d="M 570 46 L 570 65 L 210 65 L 210 124 L 350 124 L 590 124 L 640 124 L 850 124 L 920 124 C 950 124, 950 175, 920 175 L 140 175 C 110 175, 110 215, 140 215 L 150 240 L 150 276 L 235 276 L 275 276 L 470 276 L 505 276 L 695 276 L 735 276 L 835 276 L 910 276 L 980 276 L 980 312 L 980 410 C 980 425, 960 425, 940 425 L 140 425 C 110 425, 110 455, 140 455 L 150 480 L 235 480 L 275 480 L 470 480 L 505 480 L 740 480 L 780 480 L 1010 480 L 1085 480" 
+                    fill="none" 
+                    stroke="transparent" 
+                  />
 
                   {/* Start -> Receive Stock */}
                   <path 
@@ -339,14 +374,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 570 46 L 570 65 L 210 65 L 210 88" 
                     fill="none" 
                     stroke="#10b981" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-50" dur="1.5s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#059669">
-                    <animateMotion dur="2s" repeatCount="indefinite"><mpath href="#path-start-receive" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Receive Stock -> Digital Inward Logging */}
                   <path 
@@ -354,14 +384,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 310 124 L 350 124" 
                     fill="none" 
                     stroke="#3b82f6" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#2563eb">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-receive-digital" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Digital Inward Logging -> Stock Stored */}
                   <path 
@@ -369,14 +394,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 590 124 L 640 124" 
                     fill="none" 
                     stroke="#10b981" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#059669">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-digital-stored" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Stock Stored -> Create Challan (Curves down into Row 2) */}
                   <path 
@@ -384,14 +404,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 850 124 L 920 124 C 950 124, 950 175, 920 175 L 140 175 C 110 175, 110 215, 140 215 L 150 240" 
                     fill="none" 
                     stroke="#d97706" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="8 5" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-150" dur="3s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="5" fill="#b45309">
-                    <animateMotion dur="3.5s" repeatCount="indefinite"><mpath href="#path-stored-challan" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="8 5" 
+                  />
 
                   {/* Create Challan -> Identify Oldest Batch */}
                   <path 
@@ -399,14 +414,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 235 276 L 275 276" 
                     fill="none" 
                     stroke="#db2777" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#be185d">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-challan-oldest" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Identify Oldest -> Check Batch Quantity */}
                   <path 
@@ -414,14 +424,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 470 276 L 505 276" 
                     fill="none" 
                     stroke="#4f46e5" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#4338ca">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-oldest-check" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Check Batch Quantity -> Diamond */}
                   <path 
@@ -429,14 +434,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 695 276 L 735 276" 
                     fill="none" 
                     stroke="#0d9488" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#0f766e">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-check-diamond" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Diamond -> Yes -> Allocate & Generate Challan */}
                   <path 
@@ -444,29 +444,19 @@ export function FifoWorkflowVisualizer() {
                     d="M 835 276 L 910 276" 
                     fill="none" 
                     stroke="#10b981" 
-                    stroke-width="2.4" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="5" fill="#059669">
-                    <animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#path-diamond-yes" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.4" 
+                    strokeDasharray="6 4" 
+                  />
 
-                  {/* Diamond -> No -> Pull from Next Oldest Batches */}
+                  {/* Diamond -> No -> Pull from Next Oldest Batches (Exception Branch) */}
                   <path 
                     id="path-diamond-no" 
                     d="M 785 316 L 785 350 L 730 350" 
                     fill="none" 
                     stroke="#ea580c" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#c2410c">
-                    <animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#path-diamond-no" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Pull from Next Oldest Batches -> Allocate & Generate Challan */}
                   <path 
@@ -474,14 +464,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 730 370 L 980 370 L 980 312" 
                     fill="none" 
                     stroke="#ea580c" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-60" dur="1.8s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#c2410c">
-                    <animateMotion dur="2s" repeatCount="indefinite"><mpath href="#path-pull-allocate" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Allocate & Generate Challan -> Update Inventory (Curves down into Row 3) */}
                   <path 
@@ -489,14 +474,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 980 312 L 980 410 C 980 425, 960 425, 940 425 L 140 425 C 110 425, 110 455, 140 455 L 150 480" 
                     fill="none" 
                     stroke="#2563eb" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="8 5" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-150" dur="3s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="5" fill="#1d4ed8">
-                    <animateMotion dur="3.5s" repeatCount="indefinite"><mpath href="#path-allocate-update" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="8 5" 
+                  />
 
                   {/* Update Inventory -> Maintain Traceability */}
                   <path 
@@ -504,14 +484,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 235 480 L 275 480" 
                     fill="none" 
                     stroke="#7c3aed" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#6d28d9">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-update-trace" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Maintain Traceability -> Alerts & Exception Management */}
                   <path 
@@ -519,14 +494,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 470 480 L 505 480" 
                     fill="none" 
                     stroke="#059669" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#047857">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-trace-alerts" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Alerts & Exception -> Centralized Dashboard */}
                   <path 
@@ -534,14 +504,9 @@ export function FifoWorkflowVisualizer() {
                     d="M 740 480 L 780 480" 
                     fill="none" 
                     stroke="#dc2626" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#b91c1c">
-                    <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#path-alerts-dashboard" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
 
                   {/* Centralized Dashboard -> End */}
                   <path 
@@ -549,14 +514,42 @@ export function FifoWorkflowVisualizer() {
                     d="M 1010 480 L 1050 480" 
                     fill="none" 
                     stroke="#0284c7" 
-                    stroke-width="2.2" 
-                    stroke-dasharray="6 4" 
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.2s" repeatCount="indefinite" />
-                  </path>
-                  <circle r="4.5" fill="#0369a1">
-                    <animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#path-dashboard-end" /></animateMotion>
-                  </circle>
+                    strokeWidth="2.2" 
+                    strokeDasharray="6 4" 
+                  />
+
+                  {/* ───────────────── SINGLE MOVING BEAM & DOT (ONLY ONE ANIMATION THROUGH WHOLE PROCESS) ───────────────── */}
+                  <g id="unified-single-motion-group" style={{ pointerEvents: 'none' }}>
+                    {/* Trailing Particle 2 (soft tail) */}
+                    <circle r="3.2" fill="#60a5fa" opacity="0.45">
+                      <animateMotion dur="14s" repeatCount="indefinite" begin="-0.22s">
+                        <mpath href="#unified-process-path" />
+                      </animateMotion>
+                    </circle>
+
+                    {/* Trailing Particle 1 (medium tail) */}
+                    <circle r="4.5" fill="#3b82f6" opacity="0.7">
+                      <animateMotion dur="14s" repeatCount="indefinite" begin="-0.1s">
+                        <mpath href="#unified-process-path" />
+                      </animateMotion>
+                    </circle>
+
+                    {/* Outer Glowing Aura around the head dot */}
+                    <circle r="12" fill="#2563eb" opacity="0.35" filter="url(#dotGlow)">
+                      <animateMotion dur="14s" repeatCount="indefinite">
+                        <mpath href="#unified-process-path" />
+                      </animateMotion>
+                      <animate attributeName="r" values="8;13;8" dur="1.4s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.45;0.15;0.45" dur="1.4s" repeatCount="indefinite" />
+                    </circle>
+
+                    {/* Core Solid Bright Dot */}
+                    <circle r="6" fill="#1d4ed8" stroke="#ffffff" strokeWidth="2.2">
+                      <animateMotion dur="14s" repeatCount="indefinite">
+                        <mpath href="#unified-process-path" />
+                      </animateMotion>
+                    </circle>
+                  </g>
 
                   {/* ───────────────── ROW 2 CONTAINER: LIGHT BLUE ENCLOSURE ───────────────── */}
                   <rect 

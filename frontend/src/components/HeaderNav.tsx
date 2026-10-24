@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { motion } from 'motion/react';
 import { 
   Building2, 
   ShieldCheck, 
@@ -118,19 +119,28 @@ export function HeaderNav({
               <button
                 key={item.id}
                 onClick={() => onSelectTab(item.id)}
-                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
+                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer select-none ${
                   isActive
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/80 font-semibold shadow-2xs'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
+                    ? 'text-blue-700 dark:text-blue-300 font-semibold'
+                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100/70 dark:hover:bg-zinc-800/40'
                 }`}
               >
-                {item.icon}
-                <span>{item.label}</span>
-                {item.badge && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
-                    {item.badge}
-                  </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="header-nav-capsule"
+                    className="absolute inset-0 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 rounded-lg shadow-2xs -z-0"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  />
                 )}
+                <span className="relative z-10 flex items-center gap-2">
+                  {item.icon}
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                      {item.badge}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           })}

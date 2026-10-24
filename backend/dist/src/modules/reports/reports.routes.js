@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const reports_controller_1 = require("./reports.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
-router.get('/ageing', reports_controller_1.ReportsController.getAgeingReport);
-router.get('/fifo-compliance', reports_controller_1.ReportsController.getComplianceReport);
+router.get('/ageing', auth_middleware_1.authenticate, (0, auth_middleware_1.authorizeRoles)(client_1.Role.ADMIN, client_1.Role.GODOWN_MANAGER, client_1.Role.QUALITY_INSPECTOR), reports_controller_1.ReportsController.getAgeingReport);
+router.get('/fifo-compliance', auth_middleware_1.authenticate, (0, auth_middleware_1.authorizeRoles)(client_1.Role.ADMIN, client_1.Role.GODOWN_MANAGER, client_1.Role.DISPATCH_OFFICER), reports_controller_1.ReportsController.getComplianceReport);
 exports.default = router;

@@ -47,6 +47,7 @@ export default function FifoAllocationPage() {
   const [commodity, setCommodity] = useState<CommodityType>('wheat');
   const [targetFpsId, setTargetFpsId] = useState<string>(fairPriceShops[0]?.id || 'FPS-DEL-0412');
   const [requestedQuantityMt, setRequestedQuantityMt] = useState<number>(75.0);
+  const [fifoUnit, setFifoUnit] = useState<'kg' | 'mt' | 'qtl' | 'bags'>('kg');
   const [vehicleNumber, setVehicleNumber] = useState<string>('DL 1M 4492');
   const [driverName, setDriverName] = useState<string>('Harpreet Singh');
   const [driverPhone, setDriverPhone] = useState<string>('+91 98114 99012');
@@ -341,23 +342,77 @@ export default function FifoAllocationPage() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-zinc-600 dark:text-zinc-400 font-semibold">Requested Dispatch Quantity (MT)</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <label className="text-zinc-700 dark:text-zinc-300 font-semibold text-sm">
+                        Requested Dispatch Quantity
+                      </label>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-300 text-xs font-semibold">
+                        <Scale className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <select
+                          value={fifoUnit}
+                          onChange={(e) => setFifoUnit(e.target.value as 'kg' | 'mt' | 'qtl' | 'bags')}
+                          className="bg-transparent font-bold text-xs cursor-pointer border-none outline-hidden"
+                        >
+                          <option value="kg">Kilograms (kg)</option>
+                          <option value="mt">Metric Tonnes (MT)</option>
+                          <option value="qtl">Quintals (qtl)</option>
+                          <option value="bags">Standard 50kg Bags</option>
+                        </select>
+                      </div>
+                    </div>
                     <span className="text-[11px] text-zinc-500">
-                      Total Eligible Stock in Silo: <strong className="font-mono text-zinc-800 dark:text-zinc-200">{totalEligibleStockMt.toFixed(1)} MT</strong>
+                      Total Eligible in Silo: <strong className="font-mono text-zinc-800 dark:text-zinc-200">
+                        {fifoUnit === 'kg' 
+                          ? `${(totalEligibleStockMt * 1000).toLocaleString()} kg` 
+                          : fifoUnit === 'qtl'
+                          ? `${(totalEligibleStockMt * 10).toLocaleString()} qtl`
+                          : fifoUnit === 'bags'
+                          ? `${(totalEligibleStockMt * 20).toLocaleString()} Bags`
+                          : `${totalEligibleStockMt.toFixed(1)} MT`}
+                      </strong>
                     </span>
                   </div>
+
                   <input
                     type="number"
-                    step="0.5"
-                    min="0.1"
+                    step={fifoUnit === 'kg' ? '100' : fifoUnit === 'bags' ? '1' : fifoUnit === 'qtl' ? '1' : '0.5'}
+                    min={fifoUnit === 'kg' ? '50' : fifoUnit === 'bags' ? '1' : fifoUnit === 'qtl' ? '0.5' : '0.1'}
                     required
-                    value={requestedQuantityMt}
-                    onChange={(e) => setRequestedQuantityMt(parseFloat(e.target.value) || 0)}
-                    className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-mono text-base font-bold"
+                    value={
+                      fifoUnit === 'kg'
+                        ? Math.round(requestedQuantityMt * 1000)
+                        : fifoUnit === 'qtl'
+                        ? Number((requestedQuantityMt * 10).toFixed(1))
+                        : fifoUnit === 'bags'
+                        ? Math.round(requestedQuantityMt * 20)
+                        : requestedQuantityMt
+                    }
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      if (fifoUnit === 'kg') setRequestedQuantityMt(val / 1000);
+                      else if (fifoUnit === 'qtl') setRequestedQuantityMt(val / 10);
+                      else if (fifoUnit === 'bags') setRequestedQuantityMt(val / 20);
+                      else setRequestedQuantityMt(val);
+                    }}
+                    className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white font-mono text-base font-bold focus:ring-2 focus:ring-blue-500/20"
                   />
-                  <div className="text-[11px] text-zinc-400 mt-1">
-                    Standard conversion: {requestedQuantityMt} MT = ~{Math.round(requestedQuantityMt * 20)} standard 50kg jute bags.
+
+                  {/* Dynamic Conversion Strip */}
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className="text-[11px] font-semibold text-zinc-500">Live Equivalent:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[11px] font-mono font-medium text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                      {Math.round(requestedQuantityMt * 1000).toLocaleString()} kg
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-[11px] font-mono font-semibold text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                      {requestedQuantityMt.toFixed(2)} MT
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-[11px] font-mono font-medium text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                      {(requestedQuantityMt * 10).toFixed(1)} qtl
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-[11px] font-mono font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                      ~{Math.round(requestedQuantityMt * 20).toLocaleString()} Bags (50kg)
+                    </span>
                   </div>
                 </div>
 
